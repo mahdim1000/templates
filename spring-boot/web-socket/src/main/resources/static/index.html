@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Chat Room</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs/lib/stomp.min.js"></script>
+</head>
+<body>
+<div>
+    <div id="chat-window"></div>
+    <input type="text" id="name" placeholder="Your Name"/>
+    <input type="text" id="message" placeholder="Message"/>
+    <button id="send">Send</button>
+</div>
+
+<script type="text/javascript">
+    var stompClient = null;
+
+    function connect() {
+        var socket = new SockJS('http://127.0.0.1:8080/chat-websocket');
+        stompClient = Stomp.over(socket);
+
+        stompClient.connect({}, function (frame) {
+            console.log('Connected: ' + frame);
+
+            // Subscribe to the /topic/public channel
+            stompClient.subscribe('/topic/public', function (message) {
+                showMessage(JSON.parse(message.body));
+            });
+        });
+    }
+
+    function sendMessage() {
+        var messageContent = $("#message").val();
+        var senderName = $("#name").val();
+
+        if (messageContent && stompClient) {
+            var chatMessage = {
+                sender: senderName,
+                content: messageContent,
+                type: 'CHAT'
+            };
+            stompClient.send("/app/chat.sendMessage", {}, JSON.stringify(chatMessage));
+            $("#message").val("");  // Clear the message input box
+        }
+    }
+
+    function showMessage(message) {
+        $("#chat-window").append("<div>" + message.sender + ": " + message.content + "</div>");
+    }
+
+    $(function () {
+        connect();
+
+        $("#send").click(function () {
+            sendMessage();
+        });
+
+        $("#message").keypress(function (e) {
+            if (e.which == 13) {  // Enter key
+                sendMessage();
+            }
+        });
+    });
+</script>
+</body>
+</html>
